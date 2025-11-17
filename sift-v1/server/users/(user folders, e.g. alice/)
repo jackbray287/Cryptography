@@ -1,0 +1,12 @@
+# The user folders (e.g., alice/) under /server/users/ should be created as empty directories to store user-specific files. 
+
+# The contents of the user folder (e.g., alice/) will be intentionally left blank for now. 
+
+# Create the user folder structure as needed when users upload files. 
+
+# Example for the user folder:
+# /server/users/alice/ 
+# /server/users/bob/ 
+# /server/users/charlie/ 
+
+# This file is intentionally left blank.
