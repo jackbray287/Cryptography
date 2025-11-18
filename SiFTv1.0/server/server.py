@@ -1,6 +1,10 @@
-#python3
-
+# python3
 import sys, threading, socket, getpass
+# /-------------------------------------------------------------
+import os                            # NEW
+from Crypto.PublicKey import RSA     # NEW
+# -------------------------------------------------------------\
+
 from siftprotocols.siftmtp import SiFT_MTP, SiFT_MTP_Error
 from siftprotocols.siftlogin import SiFT_LOGIN, SiFT_LOGIN_Error
 from siftprotocols.siftcmd import SiFT_CMD, SiFT_CMD_Error
@@ -17,7 +21,18 @@ class Server:
         # self.server_ip = socket.gethostbyname(socket.gethostname())
         self.server_port = 5150
         # -------------------------------------------------------------
-        self.server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        priv_path = os.path.join(base_dir, "server_private.pem")
+        try:
+            with open(priv_path, "rb") as f:
+                self.server_private_key = RSA.import_key(f.read())
+        except FileNotFoundError:
+            print(f"[FATAL] RSA private key not found at {priv_path}")
+            print("        Generate it first (e.g. with genkeys.py) and retry.")
+            sys.exit(1)
+
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.server_ip, self.server_port))
         self.server_socket.listen(5)
         print('Listening on ' + self.server_ip + ':' + str(self.server_port))
@@ -30,6 +45,8 @@ class Server:
             allrecords = f.read().decode(self.server_usersfile_coding)
         records = allrecords.split(self.server_usersfile_rec_delimiter)
         for r in records:
+            if not r:      # ADDED
+                continue
             fields = r.split(self.server_usersfile_fld_delimiter)
             username = fields[0]
             usr_struct = {}
@@ -50,9 +67,12 @@ class Server:
     def handle_client(self, client_socket, addr):
         print('New client on ' + addr[0] + ':' + str(addr[1]))
 
-        mtp = SiFT_MTP(client_socket)
+        mtp = SiFT_MTP(client_socket,
+                       is_server=True,
+                       rsa_private_key=self.server_private_key)
+                       
+        loginp = SiFT_LOGIN(mtp, is_server=True)
 
-        loginp = SiFT_LOGIN(mtp)
         users = self.load_users(self.server_usersfile)
         loginp.set_server_users(users)
 
