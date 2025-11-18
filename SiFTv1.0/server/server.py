@@ -72,11 +72,8 @@ class Server:
 
     def handle_client(self, client_socket, addr):
         print('New client on ' + addr[0] + ':' + str(addr[1]))
-
-        mtp = SiFT_MTP(client_socket,
-                       is_server=True,
-                       rsa_private_key=self.server_private_key)
-                       
+        
+        mtp = SiFT_MTP(client_socket, is_server=True,rsa_private_key=self.server_private_key)           
         loginp = SiFT_LOGIN(mtp, is_server=True)
 
         users = self.load_users(self.server_usersfile)
