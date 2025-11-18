@@ -1,0 +1,9 @@
+we have done:
+
+ server/siftmtp 
+ server/server.py
+
+we need to update client folder:
+
+ -make sure that client/server.py has the attributes passed 
+ from server/siftmtp
