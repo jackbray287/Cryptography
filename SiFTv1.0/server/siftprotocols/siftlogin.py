@@ -2,7 +2,7 @@
 
 import time
 from Crypto.Hash import SHA256
-from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Protocol.KDF import PBKDF2, HKDF
 from siftprotocols.siftmtp import SiFT_MTP, SiFT_MTP_Error
 
 
@@ -26,6 +26,23 @@ class SiFT_LOGIN:
     # sets user passwords dictionary (to be used by the server)
     def set_server_users(self, users):
         self.server_users = users
+
+    # Derives the final session key (tks) from the temporary transfer key (tk) 
+    # and binds it to the session using the hash of the login request (info).
+    def derive_session_key(self, tk, info):
+        
+        # A fixed salt is used. Salt is optional in HKDF, but good practice.
+        # Since the IKM (tk) is high entropy, a fixed salt is acceptable here.
+        salt = b'\x00' * self.size_key # Fixed salt of 32 bytes
+
+        session_key = HKDF(
+            master=tk,
+            key_len=self.size_key,
+            salt=salt,
+            hash_module=SHA256,
+            context=info # Using the hash of the login request payload as context/info
+        )
+        return session_key
 
 
     # builds a login request from a dictionary
@@ -123,6 +140,14 @@ class SiFT_LOGIN:
         except SiFT_MTP_Error as e:
             raise SiFT_LOGIN_Error('Unable to send login response --> ' + e.err_msg)
 
+        # New
+        # Derive and set final session key (tks) for subsequent messages
+        if self.mtp.transfer_key is not None:
+            session_key = self.derive_session_key(self.mtp.transfer_key, request_hash)
+            self.mtp.set_transfer_key(session_key)
+        else:
+            raise SiFT_LOGIN_Error('Temporary transfer key not set after receiving login request')
+        
         # DEBUG 
         if self.DEBUG:
             print('User ' + login_req_struct['username'] + ' logged in')
@@ -181,3 +206,11 @@ class SiFT_LOGIN:
         if login_res_struct['request_hash'] != request_hash:
             raise SiFT_LOGIN_Error('Verification of login response failed')
 
+        # New 
+        # Derive and set final session key (tks) for subsequent messages
+        if self.mtp.transfer_key is not None:
+            session_key = self.derive_session_key(self.mtp.transfer_key, request_hash)
+            self.mtp.set_transfer_key(session_key)
+        else:
+            # This should not happen if send_msg for login_req worked correctly
+            raise SiFT_LOGIN_Error('Temporary transfer key not set after sending login request')

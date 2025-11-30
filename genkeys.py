@@ -12,8 +12,8 @@ def main():
 
     # 2) Paths – adjust if your folder layout differs
     base = os.path.dirname(os.path.abspath(__file__))
-    server_priv_path = os.path.join(base, "SiFTv1.0", "server", "server_private.pem")
-    client_pub_path  = os.path.join(base, "SiFTv1.0", "client", "server_public.pem")
+    server_priv_path = os.path.join(base, "SiFTv1.0", "server", "server_private1.pem")
+    client_pub_path  = os.path.join(base, "SiFTv1.0", "client", "server_public1.pem")
 
     # 3) Write files
     os.makedirs(os.path.dirname(server_priv_path), exist_ok=True)

@@ -147,7 +147,7 @@ class SiFT_MTP:
 			raise SiFT_MTP_Error('Incomplete message body reveived')
 	
 		msg_type = parsed_msg_hdr['typ']
-		nonce = self.make_nonce(sqn, rnd)
+		nonce = self._make_nonce(sqn, rnd)
 
         # NEW: login_req is special: epd||mac||etk, only server should handle it
 		if msg_type == self.type_login_req:
@@ -247,7 +247,7 @@ class SiFT_MTP:
 			
 			msg_hdr = self.msg_hdr_ver + msg_type + msg_hdr_len + sqn_bytes + rnd + rsv
 			
-			nonce = self.make_nonce(sqn, rnd)
+			nonce = self._make_nonce(sqn, rnd)
 			cipher = AES.new(tk, AES.MODE_GCM, nonce=nonce)
 			cipher.update(msg_hdr)
 			epd, mac = cipher.encrypt_and_digest(msg_payload)
@@ -272,7 +272,7 @@ class SiFT_MTP:
 			
 			msg_hdr = self.msg_hdr_ver + msg_type + msg_hdr_len + sqn_bytes + rnd + rsv
 			
-			nonce = self.make_nonce(sqn, rnd)
+			nonce = self._make_nonce(sqn, rnd)
 			cipher = AES.new(self.transfer_key, AES.MODE_GCM, nonce=nonce)
 			cipher.update(msg_hdr)
 			epd, mac = cipher.encrypt_and_digest(msg_payload)
@@ -289,7 +289,7 @@ class SiFT_MTP:
 
 		# try to send
 		try:
-			self.send_bytes(msg_hdr + msg_payload)
+			self.send_bytes(msg_hdr + msg_body)
 		except SiFT_MTP_Error as e:
 			raise SiFT_MTP_Error('Unable to send message to peer --> ' + e.err_msg)
 

@@ -8,6 +8,8 @@ from siftprotocols.siftcmd import SiFT_CMD, SiFT_CMD_Error
 from siftprotocols.siftupl import SiFT_UPL, SiFT_UPL_Error
 from siftprotocols.siftdnl import SiFT_DNL, SiFT_DNL_Error
 
+from Crypto.PublicKey import RSA 
+
 # ----------- CONFIG -------------
 server_ip = '127.0.0.1' # localhost
 # server_ip = '192.168.x.y'
@@ -189,6 +191,18 @@ class SiFTShell(cmd.Cmd):
 # --------------------------------------
 if __name__ == '__main__':
 
+    #NEW
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    pub_path = os.path.join(base_dir, "server_public.pem")
+    try:
+        with open(pub_path, "rb") as f:
+            server_public_key = RSA.import_key(f.read())
+    except FileNotFoundError:
+        print(f'[FATAL] RSA public key not found at {pub_path}')
+        print('        Make sure "server_public.pem" is in the client directory.')
+        sys.exit(1)
+    # -------------------------------------------------------------\
+
     try:
         sckt = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         sckt.connect((server_ip, server_port))
@@ -198,8 +212,12 @@ if __name__ == '__main__':
     else:
         print('Connection to server established on ' + server_ip + ':' + str(server_port))
 
-    mtp = SiFT_MTP(sckt)
+    # /-------------------------------------------------------------
+    # NEW: Pass the loaded public key to SiFT_MTP
+    mtp = SiFT_MTP(sckt, rsa_public_key=server_public_key)
+    # NEW: Pass the loaded public key to SiFT_LOGIN (redundant if MTP takes it, but safer)
     loginp = SiFT_LOGIN(mtp)
+    # -------------------------------------------------------------\
 
     print()
     username = input('   Username: ')
