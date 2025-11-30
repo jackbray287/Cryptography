@@ -5,11 +5,10 @@ import os                            # NEW
 from Crypto.PublicKey import RSA     # NEW
 # -------------------------------------------------------------\
 
-# Add client package directory to sys.path so the fixed client/siftprotocols is used
+# Ensure server/ is on sys.path so we import server/siftprotocols
 server_dir = os.path.dirname(os.path.abspath(__file__))
-client_pkg = os.path.normpath(os.path.join(server_dir, '..', 'client'))
-if client_pkg not in sys.path:
-    sys.path.insert(0, client_pkg)
+if server_dir not in sys.path:
+    sys.path.insert(0, server_dir)
 
 from siftprotocols.siftmtp import SiFT_MTP, SiFT_MTP_Error
 from siftprotocols.siftlogin import SiFT_LOGIN, SiFT_LOGIN_Error
