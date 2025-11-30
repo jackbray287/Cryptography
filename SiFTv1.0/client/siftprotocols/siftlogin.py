@@ -21,29 +21,24 @@ class SiFT_LOGIN:
         # --------- STATE ------------
         self.mtp = mtp
         self.server_users = None 
-
+        self.size_key = 32   # 32 bytes = 256-bit transfer/session key
 
     # sets user passwords dictionary (to be used by the server)
     def set_server_users(self, users):
         self.server_users = users
 
-    # Derives the final session key (tks) from the temporary transfer key (tk) 
-    # and binds it to the session using the hash of the login request (info).
     def derive_session_key(self, tk, info):
-        
-        # A fixed salt is used. Salt is optional in HKDF, but good practice.
-        # Since the IKM (tk) is high entropy, a fixed salt is acceptable here.
-        salt = b'\x00' * self.size_key # Fixed salt of 32 bytes
+        # fixed salt of 32 bytes (OK here since tk is already high entropy)
+        salt = b'\x00' * self.size_key
 
         session_key = HKDF(
             master=tk,
             key_len=self.size_key,
             salt=salt,
-            hash_module=SHA256,
-            context=info # Using the hash of the login request payload as context/info
+            hashmod=SHA256,
+            context=info
         )
         return session_key
-
 
     # builds a login request from a dictionary
     def build_login_req(self, login_req_struct):

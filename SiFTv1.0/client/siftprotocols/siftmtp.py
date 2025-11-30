@@ -175,7 +175,7 @@ class SiFT_MTP:
 			if len(tk) != 32:
 				raise SiFT_MTP_Error('Temporary key has invalid length')
 				
-			cipher = AES.new(tk, AES.MODE_GCM, nonce=nonce)
+			cipher = AES.new(tk, AES.MODE_GCM, nonce=nonce, mac_len=self.size_mac)
 			cipher.update(msg_hdr)
 			try:
 				msg_payload = cipher.decrypt_and_verify(epd, mac)
@@ -196,7 +196,7 @@ class SiFT_MTP:
 			epd = msg_body[:-self.size_mac]
 			mac = msg_body[-self.size_mac:]
 			
-			cipher = AES.new(self.transfer_key, AES.MODE_GCM, nonce=nonce)
+			cipher = AES.new(self.transfer_key, AES.MODE_GCM, nonce=nonce, mac_len=self.size_mac)
 			cipher.update(msg_hdr)
 			try:
 				msg_payload = cipher.decrypt_and_verify(epd, mac)
@@ -248,7 +248,7 @@ class SiFT_MTP:
 			msg_hdr = self.msg_hdr_ver + msg_type + msg_hdr_len + sqn_bytes + rnd + rsv
 			
 			nonce = self._make_nonce(sqn, rnd)
-			cipher = AES.new(tk, AES.MODE_GCM, nonce=nonce)
+			cipher = AES.new(tk, AES.MODE_GCM, nonce=nonce, mac_len=self.size_mac)
 			cipher.update(msg_hdr)
 			epd, mac = cipher.encrypt_and_digest(msg_payload)
 
@@ -273,7 +273,7 @@ class SiFT_MTP:
 			msg_hdr = self.msg_hdr_ver + msg_type + msg_hdr_len + sqn_bytes + rnd + rsv
 			
 			nonce = self._make_nonce(sqn, rnd)
-			cipher = AES.new(self.transfer_key, AES.MODE_GCM, nonce=nonce)
+			cipher = AES.new(self.transfer_key, AES.MODE_GCM, nonce=nonce, mac_len=self.size_mac)
 			cipher.update(msg_hdr)
 			epd, mac = cipher.encrypt_and_digest(msg_payload)
 			msg_body = epd + mac
