@@ -17,14 +17,20 @@ from siftprotocols.siftcmd import SiFT_CMD, SiFT_CMD_Error
 class Server:
     def __init__(self):
         # ------------------------ CONFIG -----------------------------
-        self.server_usersfile = 'users.txt' 
         self.server_usersfile_coding = 'utf-8'
         self.server_usersfile_rec_delimiter = '\n'
         self.server_usersfile_fld_delimiter = ':'
-        self.server_rootdir = './users/'
         self.server_ip = socket.gethostbyname('localhost')
         # self.server_ip = socket.gethostbyname(socket.gethostname())
         self.server_port = 5150
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        self.server_usersfile = os.path.join(base_dir, 'users.txt')
+
+        # IMPORTANT: siftcmd.py concatenates strings and checks path[-1] == '/',
+        # so force a trailing slash.
+        self.server_rootdir = os.path.join(base_dir, 'users') + '/'
         # -------------------------------------------------------------
 
         base_dir = os.path.dirname(os.path.abspath(__file__))
