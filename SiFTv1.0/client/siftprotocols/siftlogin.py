@@ -3,6 +3,7 @@
 import time
 from Crypto.Hash import SHA256
 from Crypto.Protocol.KDF import PBKDF2, HKDF
+from Crypto.Random import get_random_bytes
 from siftprotocols.siftmtp import SiFT_MTP, SiFT_MTP_Error
 
 
@@ -23,30 +24,31 @@ class SiFT_LOGIN:
         self.server_users = None 
         self.size_key = 32   # 32 bytes = 256-bit transfer/session key
         self.ts_window = 120
+        self.ts_window_ns = self.ts_window * 1_000_000_000  # convert seconds to nanoseconds
 
     # sets user passwords dictionary (to be used by the server)
     def set_server_users(self, users):
         self.server_users = users
 
     def derive_session_key(self, tk, info):
-        # fixed salt of 32 bytes (OK here since tk is already high entropy)
-        salt = b'\x00' * self.size_key
-
+        # HKDF with request_hash as salt, no additional context
         session_key = HKDF(
             master=tk,
             key_len=self.size_key,
-            salt=salt,
+            salt=info,
             hashmod=SHA256,
-            context=info
+            context=b''
         )
         return session_key
 
     # builds a login request from a dictionary
     def build_login_req(self, login_req_struct):
 
-        login_req_str = login_req_struct['username']
+        # Format: <timestamp>\n<username>\n<password>\n<client_random>
+        login_req_str = str(login_req_struct['timestamp'])
+        login_req_str += self.delimiter + login_req_struct['username']
         login_req_str += self.delimiter + login_req_struct['password']
-        login_req_str += self.delimiter + str(login_req_struct['timestamp']) 
+        login_req_str += self.delimiter + login_req_struct['client_random'].hex()
         return login_req_str.encode(self.coding)
 
 
@@ -55,16 +57,19 @@ class SiFT_LOGIN:
 
         login_req_fields = login_req.decode(self.coding).split(self.delimiter)
         login_req_struct = {}
-        login_req_struct['username'] = login_req_fields[0]
-        login_req_struct['password'] = login_req_fields[1]
-        login_req_struct['timestamp'] = int(login_req_fields[2])
+        login_req_struct['timestamp'] = int(login_req_fields[0])
+        login_req_struct['username'] = login_req_fields[1]
+        login_req_struct['password'] = login_req_fields[2]
+        login_req_struct['client_random'] = bytes.fromhex(login_req_fields[3])
         return login_req_struct
 
 
     # builds a login response from a dictionary
     def build_login_res(self, login_res_struct):
 
+        # Format: <request_hash>\n<server_random>
         login_res_str = login_res_struct['request_hash'].hex() 
+        login_res_str += self.delimiter + login_res_struct['server_random'].hex()
         return login_res_str.encode(self.coding)
 
 
@@ -73,6 +78,7 @@ class SiFT_LOGIN:
         login_res_fields = login_res.decode(self.coding).split(self.delimiter)
         login_res_struct = {}
         login_res_struct['request_hash'] = bytes.fromhex(login_res_fields[0])
+        login_res_struct['server_random'] = bytes.fromhex(login_res_fields[1])
         return login_res_struct
 
 
@@ -115,11 +121,11 @@ class SiFT_LOGIN:
             print("[CHECK] client request_hash =", request_hash.hex())
 
         login_req_struct = self.parse_login_req(msg_payload)
-        now = int(time.time())
+        now = time.time_ns()
         ts = login_req_struct['timestamp']
-        if abs(now - ts) > self.ts_window:
+        if abs(now - ts) > self.ts_window_ns:
             raise SiFT_LOGIN_Error(f'Timestamp check failed (now={now}, ts={ts})')
-        login_req_struct['timestamp'] = int(time.time())
+        login_req_struct['timestamp'] = time.time_ns()
 
         if self.DEBUG:
             print("[DEBUG] timestamp =", login_req_struct['timestamp'])
@@ -135,6 +141,7 @@ class SiFT_LOGIN:
         # building login response
         login_res_struct = {}
         login_res_struct['request_hash'] = request_hash
+        login_res_struct['server_random'] = get_random_bytes(16)
         msg_payload = self.build_login_res(login_res_struct)
 
         # DEBUG 
@@ -152,10 +159,10 @@ class SiFT_LOGIN:
         except SiFT_MTP_Error as e:
             raise SiFT_LOGIN_Error('Unable to send login response --> ' + e.err_msg)
 
-        # New
-        # Derive and set final session key (tks) for subsequent messages
+        # Derive final transfer key: HKDF(client_random||server_random, salt=request_hash)
         if self.mtp.transfer_key is not None:
-            session_key = self.derive_session_key(self.mtp.transfer_key, request_hash)
+            key_material = login_req_struct['client_random'] + login_res_struct['server_random']
+            session_key = self.derive_session_key(key_material, request_hash)
             self.mtp.set_transfer_key(session_key)
             if self.DEBUG:
                 print("[CHECK] server final_tk =", session_key.hex())
@@ -178,7 +185,8 @@ class SiFT_LOGIN:
         login_req_struct = {}
         login_req_struct['username'] = username
         login_req_struct['password'] = password
-        login_req_struct['timestamp'] = int(time.time())
+        login_req_struct['timestamp'] = time.time_ns()
+        login_req_struct['client_random'] = get_random_bytes(16)
         msg_payload = self.build_login_req(login_req_struct)
 
         # DEBUG 
@@ -222,15 +230,14 @@ class SiFT_LOGIN:
         if login_res_struct['request_hash'] != request_hash:
             raise SiFT_LOGIN_Error('Verification of login response failed')
 
-        # New 
-        # Derive and set final session key (tks) for subsequent messages
+        # Derive final transfer key: HKDF(client_random||server_random, salt=request_hash)
         if self.mtp.transfer_key is not None:
-            session_key = self.derive_session_key(self.mtp.transfer_key, request_hash)
+            key_material = login_req_struct['client_random'] + login_res_struct['server_random']
+            session_key = self.derive_session_key(key_material, request_hash)
             self.mtp.set_transfer_key(session_key)
             if self.DEBUG:
-                print("[CHECK] server final_tk =", session_key.hex())
-                print("[CHECK] server mtp.transfer_key =", self.mtp.transfer_key.hex())
+                print("[CHECK] client final_tk =", session_key.hex())
+                print("[CHECK] client mtp.transfer_key =", self.mtp.transfer_key.hex())
         else:
             # This should not happen if send_msg for login_req worked correctly
             raise SiFT_LOGIN_Error('Temporary transfer key not set after sending login request')
-
