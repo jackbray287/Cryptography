@@ -157,12 +157,11 @@ class SiFT_LOGIN:
         if self.mtp.transfer_key is not None:
             session_key = self.derive_session_key(self.mtp.transfer_key, request_hash)
             self.mtp.set_transfer_key(session_key)
+            if self.DEBUG:
+                print("[CHECK] server final_tk =", session_key.hex())
+                print("[CHECK] server mtp.transfer_key =", self.mtp.transfer_key.hex())
         else:
             raise SiFT_LOGIN_Error('Temporary transfer key not set after receiving login request')
-        
-        if self.DEBUG:
-            print("[CHECK] client final_tk =", session_key.hex())
-            print("[CHECK] client mtp.transfer_key =", self.mtp.transfer_key.hex())
         
         # DEBUG 
         if self.DEBUG:
