@@ -291,7 +291,13 @@ class SiFT_MTP:
 				print('  MAC (' + str(macl) + '): ' + mac.hex())
 				print('  ETK (' + str(etkl) + '): ' + etk.hex())
 			else:
-				print('  BDY  (' + str(len(msg_body)) + '): ' + msg_body.hex())
+				epdl = len(msg_body) - self.size_mac
+				macl = self.size_mac
+				epdb = msg_body[:epdl]
+				macb = msg_body[epdl:]
+				print('  BDY  (' + str(len(msg_body)) + '):')
+				print('  EPD (' + str(epdl) + '): ' + epdb.hex())
+				print('  MAC (' + str(macl) + '): ' + macb.hex())
 			print('------------------------------------------')
 
 		# try to send
