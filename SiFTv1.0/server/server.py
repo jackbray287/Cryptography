@@ -5,11 +5,6 @@ import os                            # NEW
 from Crypto.PublicKey import RSA     # NEW
 # -------------------------------------------------------------\
 
-# Ensure server/ is on sys.path so we import server/siftprotocols
-server_dir = os.path.dirname(os.path.abspath(__file__))
-if server_dir not in sys.path:
-    sys.path.insert(0, server_dir)
-
 from siftprotocols.siftmtp import SiFT_MTP, SiFT_MTP_Error
 from siftprotocols.siftlogin import SiFT_LOGIN, SiFT_LOGIN_Error
 from siftprotocols.siftcmd import SiFT_CMD, SiFT_CMD_Error
