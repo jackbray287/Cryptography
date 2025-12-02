@@ -278,12 +278,20 @@ class SiFT_MTP:
 			epd, mac = cipher.encrypt_and_digest(msg_payload)
 			msg_body = epd + mac
 
-		# DEBUG: show encrypted bytes (msg_body) instead of plaintext payload
+		# DEBUG: show encrypted bytes split by section for clarity
 		if self.DEBUG:
-			print('MTP message to send (' + str(msg_size) + '):')
-			print('HDR (' + str(len(msg_hdr)) + '): ' + msg_hdr.hex())
-			print('BDY (' + str(len(msg_body)) + '): ')
-			print(msg_body.hex())
+			print('MTP message to send (' + str(msg_size) + ' bytes):')
+			print('  HDR  (' + str(len(msg_hdr)) + '): ' + msg_hdr.hex())
+			if msg_type == self.type_login_req:
+				epdl = len(epd)
+				macl = len(mac)
+				etkl = len(etk)
+				print('  BDY  (' + str(len(msg_body)) + '):')
+				print('  EPD (' + str(epdl) + '): ' + epd.hex())
+				print('  MAC (' + str(macl) + '): ' + mac.hex())
+				print('  ETK (' + str(etkl) + '): ' + etk.hex())
+			else:
+				print('  BDY  (' + str(len(msg_body)) + '): ' + msg_body.hex())
 			print('------------------------------------------')
 
 		# try to send
